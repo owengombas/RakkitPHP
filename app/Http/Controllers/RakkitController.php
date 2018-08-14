@@ -4,55 +4,61 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Storage;
 
+ini_set('xdebug.var_display_max_depth', 100);
+ini_set('xdebug.var_display_max_children', 256);
+ini_set('xdebug.var_display_max_data', 1024);
+
 class RakkitController extends Controller {
   const EXT = '.json';
   public function __construct() {}
+  static function getParent($content, $child) {
+    if ($child['parent']) {
+      $parent = \__::where($content, ['id' => $child['parent']]);
+      return $parent ? array_search($parent[0], $content, true) : null;
+    }
+    return null;
+  }
+  static function filter ($obj) {
+    $filteredObj = [];
+    $filteredObj['_id'] = $obj['id'];
+    $filteredObj['_parent'] = $obj['parent'];
+    $filteredObj['_title'] = $obj['title'];
+    foreach($obj['fields'] as $f) {
+      $filteredObj['$'.$f['name']] = $f['value'];
+    }
+    return $filteredObj;
+  }
+  static function populate($source, $pure = false) {
+    $content = $source;
+    $nested = [];
+    foreach ($source as &$s) {
+      $obj = $s;
+      $original = $s;
+      $s = $pure ? $s : self::filter($s);
+      if (is_null($original['parent'])) {
+        $nested = &$s;
+      } else {
+        $parent = self::getParent($content, $original);
+        if (isset($source[$parent])) {
+          if ($pure) {
+            if (!isset($source[$parent]['children'])) {
+              $source[$parent]['children'] = [];
+            }
+            $source[$parent]['children'][] = &$s;
+          } else {
+            $source[$parent][$obj['title']] = &$s;
+          }
+        }
+      }
+    }
+    return $nested;
+  }
+  public function getPure($page) {
+    return self::populate(self::getFileContent($page), true);
+  }
   public function get($page) {
     try {
-      global $content;
-      $content = json_decode(self::getFileContent($page), true);
-      function getParent($child) {
-        global $content;
-        return \__::where($content, ['parent' => $child['parent']]);
-      }
-      function filter ($obj) {
-        $filteredObj = [];
-        $filteredObj['_id'] = $obj['id'];
-        $filteredObj['_parent'] = $obj['parent'];
-        $filteredObj['_title'] = $obj['title'];
-        return $filteredObj;
-      }
-      function populate ($level) {
-        global $newObj;
-        $newObj = [];
-        function searchParent($element) {
-          if ($element['parent']) {
-            $parent = getParent($c);
-            searchParent($parent);
-            
-          } else {
-            return null;
-          }
-        }
-        function deep($el) {
-          global $newObj;
-          foreach($level as $c) {
-            $child = filter($c);
-            if ($parent) {
-              $parent = $parent[0];
-              $newObj += [$parent['title'] => []];
-              $newObj[$parent['title']] += [$c['title'] => $child];
-              var_dump($parent);
-              deep([$parent]);
-            } else {
-              $newObj += [$c['title'] => $child];
-            }
-          }
-        }
-        return $newObj;
-      }
-      var_dump(populate($content));
-      return response($content);
+      return response($this->populate(self::getFileContent($page)));
     } catch (\Exception $e) {
       return response($e->getMessage(), 500);
     }
@@ -94,7 +100,7 @@ class RakkitController extends Controller {
     $page = "$page.json";
     if (Storage::exists($page)) {
       $content = Storage::get($page);
-      return substr_replace($content, ']', strlen($content) - 1) ;
+      return json_decode(substr_replace($content, ']', strlen($content) - 1), true);
     } else {
       throw new \Exception('File doesn\'t exist');
     }

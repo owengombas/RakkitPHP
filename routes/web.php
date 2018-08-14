@@ -9,4 +9,5 @@ $router->group(['prefix' => 'rakkit'], function () use ($router) {
   $router->post('/element', 'RakkitController@add');
   $router->post('/', 'RakkitController@create');
   $router->get('/{page}', 'RakkitController@get');
+  $router->get('/pure/{page}', 'RakkitController@getPure');
 });
