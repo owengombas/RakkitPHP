@@ -72,11 +72,22 @@ class RakkitController extends Controller {
   }
 
   public function getPure($page) {
-    return self::populate($page, true);
+    try {
+      return self::populate($page, true);
+    } catch (\Exception $e) {
+      return response($e->getMessage(), 500);
+    }
   }
   public function get($page) {
     try {
-      return response($this->populate($page));
+      return $this->populate($page);
+    } catch (\Exception $e) {
+      return response($e->getMessage(), 500);
+    }
+  }
+  public function getPages() {
+    try {
+      return array_values(array_filter(Storage::disk('local')->files(), function($item) {return $item[0] !== '.';}));
     } catch (\Exception $e) {
       return response($e->getMessage(), 500);
     }
@@ -91,13 +102,13 @@ class RakkitController extends Controller {
       }
       if (!Storage::exists($file)) {
         Storage::put($file, json_encode([$newElement]));
-        return response('Saved');
+        return 'Saved';
       } else {
         if (!empty($newElement)) {
           $content = self::getFileContent($page);
           array_push($content, $newElement);
           Storage::put($file, json_encode($content));
-          return response('Saved');
+          return 'Saved';
         }
         return response('Cannot insert empty content', 401);
       }
@@ -114,7 +125,7 @@ class RakkitController extends Controller {
         if (isset($content[$index])) {
           $content[$index] = array_merge($content[$index], $newElement['new']);
           Storage::put($file, json_encode($content));
-          return response('Saved');
+          return 'Saved';
         }
         return response('Element not found', 404);
       }
@@ -126,7 +137,7 @@ class RakkitController extends Controller {
     $page = self::getPagePath($page);
     if (Storage::exists($page)) {
       Storage::delete($page);
-      return response('Deleted');
+      return 'Deleted';
     }
     return response("Page doesn't exists", 401);
   }
