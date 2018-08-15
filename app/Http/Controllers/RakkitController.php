@@ -49,10 +49,10 @@ class RakkitController extends Controller {
     $content = $source;
     $nested = [];
     foreach ($source as &$s) {
-      $obj = $s;
       $original = $s;
       $s = $pure ? $s : self::filter($s);
       if (is_null($original['parent'])) {
+        $s[($pure ? '' : '_').'title'] = $page;
         $nested = &$s;
       } else {
         $parent = self::getParentIndex($original, $content);
@@ -63,7 +63,7 @@ class RakkitController extends Controller {
             }
             $source[$parent]['children'][] = &$s;
           } else {
-            $source[$parent][$obj['title']] = &$s;
+            $source[$parent][$original['title']] = &$s;
           }
         }
       }
@@ -87,7 +87,13 @@ class RakkitController extends Controller {
   }
   public function getPages() {
     try {
-      return array_values(array_filter(Storage::disk('local')->files(), function($item) {return $item[0] !== '.';}));
+      $filteredArr = array_filter(Storage::disk('local')->files(), function($item) {
+        return $item[0] !== '.';
+      });
+      $filteredArr = array_map(function($item) {
+        return pathinfo($item, PATHINFO_FILENAME);
+      }, $filteredArr);
+      return array_values($filteredArr);
     } catch (\Exception $e) {
       return response($e->getMessage(), 500);
     }
@@ -123,7 +129,7 @@ class RakkitController extends Controller {
         $content = self::getFileContent($page);
         $index = self::getElementIndex($id, $content);
         if (isset($content[$index])) {
-          $content[$index] = array_merge($content[$index], $newElement['new']);
+          $content[$index] = array_merge($content[$index], $newElement);
           Storage::put($file, json_encode($content));
           return 'Saved';
         }
