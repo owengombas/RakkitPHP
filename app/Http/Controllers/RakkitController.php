@@ -10,8 +10,20 @@ ini_set('xdebug.var_display_max_data', 1024);
 
 class RakkitController extends Controller {
   const EXT = '.json';
-  public function __construct() {}
 
+  public function __construct() {
+    $this->middleware('cors');
+  }
+
+  static function getNewElement($newElement) {
+    $defaultElement = [
+      'id' => uniqid(),
+      'name' => 'Unamed element',
+      'parent' => NULL,
+      'fields' => [],
+    ];
+    return array_merge($defaultElement, $newElement);
+  }
   static function getPagePath($page) {
     return $page.self::EXT;
   }
@@ -24,6 +36,9 @@ class RakkitController extends Controller {
       throw new \Exception('File doesn\'t exist');
     }
   }
+  static public function getVariationsList() {
+    return self::getFileContent('.variations');
+  }
   static function getElementIndex($id, $content) {
     $element = \__::where($content, ['id' => $id]);
     return !empty($element) ? array_search($element[0], $content, true) : null;
@@ -34,36 +49,39 @@ class RakkitController extends Controller {
     }
     return null;
   }
-  static function filter ($obj) {
+  // Reduce the element to use it as simple as possible
+  static function filter ($obj, $variation) {
     $filteredObj = [];
     $filteredObj['_id'] = $obj['id'];
     $filteredObj['_parent'] = $obj['parent'];
-    $filteredObj['_title'] = $obj['title'];
+    $filteredObj['_name'] = $obj['name'];
     foreach($obj['fields'] as $f) {
-      $filteredObj['$'.$f['name']] = $f['value'];
+      $filteredObj['$'.$f['name']] = isset($f['variations'][$variation]) ? $f['variations'][$variation] : NULL;
     }
     return $filteredObj;
   }
-  static function populate($page, $pure = false) {
+  // Make relations (parent, children)
+  static function populate($page, $pure = false, $variation = null) {
     $source = self::getFileContent($page);
     $content = $source;
     $nested = [];
     foreach ($source as &$s) {
       $original = $s;
-      $s = $pure ? $s : self::filter($s);
+      $s = $pure ? $s : self::filter($s, $variation);
       if (is_null($original['parent'])) {
-        $s[($pure ? '' : '_').'title'] = $page;
+        $s[($pure ? '' : '_').'name'] = $page;
         $nested = &$s;
       } else {
         $parent = self::getParentIndex($original, $content);
         if (isset($source[$parent])) {
+          // Children property if pure mode
           if ($pure) {
             if (!isset($source[$parent]['children'])) {
               $source[$parent]['children'] = [];
             }
             $source[$parent]['children'][] = &$s;
           } else {
-            $source[$parent][$original['title']] = &$s;
+            $source[$parent][$original['name']] = &$s;
           }
         }
       }
@@ -78,12 +96,15 @@ class RakkitController extends Controller {
       return response($e->getMessage(), 500);
     }
   }
-  public function get($page) {
+  public function get($page, $variation) {
     try {
-      return $this->populate($page);
+      return $this->populate($page, false, $variation);
     } catch (\Exception $e) {
       return response($e->getMessage(), 500);
     }
+  }
+  public function getVariations() {
+    return self::getVariationsList();
   }
   public function getPages() {
     try {
@@ -102,10 +123,7 @@ class RakkitController extends Controller {
     $page = $request->input('page');
     if (!empty($page)) {
       $file = self::getPagePath($request->input('page'));
-      $newElement = $request->input('new');
-      if (!empty($newElement)) {
-        $newElement['id'] = uniqid();
-      }
+      $newElement = self::getNewElement($request->input('new'));
       if (!Storage::exists($file)) {
         Storage::put($file, json_encode([$newElement]));
         return 'Saved';
