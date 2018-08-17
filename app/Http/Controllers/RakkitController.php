@@ -75,11 +75,11 @@ class RakkitController extends Controller {
         $parent = self::getParentIndex($original, $content);
         if (isset($source[$parent])) {
           // Children property if pure mode
-          if ($pure) {
-            if (!isset($source[$parent]['children'])) {
-              $source[$parent]['children'] = [];
+          if ($pure || (isset($content[$parent]['childType']) && $content[$parent]['childType'] === 'list')) {
+            if (!isset($source[$parent]['items'])) {
+              $source[$parent]['items'] = [];
             }
-            $source[$parent]['children'][] = &$s;
+            $source[$parent]['items'][] = &$s;
           } else {
             $source[$parent][$original['name']] = &$s;
           }
