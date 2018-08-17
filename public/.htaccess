@@ -19,6 +19,5 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 
-    Header set Access-Control-Allow-Origin "*"
-    Header set Access-Control-Allow-Methods: "GET,POST,OPTIONS,DELETE,PUT"
+    Header set X-Powered-By "Rakkit"
 </IfModule>

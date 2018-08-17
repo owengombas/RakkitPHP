@@ -11,10 +11,17 @@ ini_set('xdebug.var_display_max_data', 1024);
 class RakkitController extends Controller {
   const EXT = '.json';
 
-  public function __construct() {
-    $this->middleware('cors');
-  }
+  public function __construct() {}
 
+  static function exists($page) {
+    return Storage::exists(self::getPagePath($page));
+  }
+  static function updateFile($page, $content) {
+    Storage::put(self::getPagePath($page), json_encode($content));
+  }
+  static function deleteFile($page) {
+    Storage::delete(self::getPagePath($page));
+  }
   static function getNewElement($newElement) {
     $defaultElement = [
       'id' => uniqid(),
@@ -122,16 +129,15 @@ class RakkitController extends Controller {
   public function create(Request $request) {
     $page = $request->input('page');
     if (!empty($page)) {
-      $file = self::getPagePath($request->input('page'));
       $newElement = self::getNewElement($request->input('new'));
-      if (!Storage::exists($file)) {
-        Storage::put($file, json_encode([$newElement]));
+      if (self::exists($page)) {
+        self::updateFile($page, [$newElement]);
         return 'Saved';
       } else {
         if (!empty($newElement)) {
           $content = self::getFileContent($page);
           array_push($content, $newElement);
-          Storage::put($file, json_encode($content));
+          self::updateFile($page, $content);
           return 'Saved';
         }
         return response('Cannot insert empty content', 401);
@@ -141,14 +147,13 @@ class RakkitController extends Controller {
   }
   public function update(Request $request, $page, $id) {
     $newElement = $request->input();
-    $file = self::getPagePath($page);
-    if (Storage::exists(self::getPagePath($page))) {
+    if (self::exists($page)) {
       if (!empty($newElement)) {
         $content = self::getFileContent($page);
         $index = self::getElementIndex($id, $content);
         if (isset($content[$index])) {
           $content[$index] = array_merge($content[$index], $newElement);
-          Storage::put($file, json_encode($content));
+          self::updateFile($page, $content);
           return 'Saved';
         }
         return response('Element not found', 404);
@@ -157,10 +162,30 @@ class RakkitController extends Controller {
     }
     return response('Page not found', 404);
   }
-  public function delete($page) {
-    $page = self::getPagePath($page);
-    if (Storage::exists($page)) {
-      Storage::delete($page);
+  public function deletePage($page) {
+    if (self::exists($page)) {
+      self::deleteFile($page);
+      return 'Deleted';
+    }
+    return response("Page doesn't exists", 401);
+  }
+  public function deleteElement($page, $id) {
+    if (self::exists($page)) {
+      $content = self::getFileContent($page);
+      $parentIndex = self::getElementIndex($id, $content);
+      function recurseDelete(&$content, $parentIndex) {
+        // Unset childs
+        foreach($content as $key => $value) {
+          if ($value['parent'] === $content[$parentIndex]['id']) {
+            recurseDelete($content, $key);
+            unset($content[$key], $key);
+          }
+        }
+        // Unset parent
+        unset($content[$parentIndex]);
+      }
+      recurseDelete($content, $parentIndex);
+      self::updateFile($page, $content);
       return 'Deleted';
     }
     return response("Page doesn't exists", 401);
