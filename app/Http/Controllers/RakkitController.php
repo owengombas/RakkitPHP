@@ -130,15 +130,15 @@ class RakkitController extends Controller {
     $page = $request->input('page');
     if (!empty($page)) {
       $newElement = self::getNewElement($request->input('new'));
-      if (self::exists($page)) {
+      if (!self::exists($page)) {
         self::updateFile($page, [$newElement]);
-        return 'Saved';
+        return $newElement;
       } else {
         if (!empty($newElement)) {
           $content = self::getFileContent($page);
           array_push($content, $newElement);
           self::updateFile($page, $content);
-          return 'Saved';
+          return $newElement;
         }
         return response('Cannot insert empty content', 401);
       }

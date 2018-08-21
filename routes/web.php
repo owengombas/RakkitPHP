@@ -6,7 +6,6 @@ $router->get('/', function () use ($router) {
 
 // Rakkit Controller
 $router->group(['prefix' => 'rakkit'], function () use ($router) {
-  $router->put('/', function() { echo 'aaa'; });
   $router->post('/', 'RakkitController@create');
   $router->delete('/{page}', 'RakkitController@deletePage');
   $router->delete('/{page}/{id}', 'RakkitController@deleteElement');
