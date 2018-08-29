@@ -23,9 +23,11 @@ class RakkitController extends Controller {
     Storage::delete(self::getPagePath($page));
   }
   static function getNewElement($newElement) {
+    $id = uniqid();
+    unset($newElement['name']);
     $defaultElement = [
-      'id' => uniqid(),
-      'name' => 'Unamed element',
+      'id' => $id,
+      'name' => 'Node - '.$id,
       'parent' => NULL,
       'fields' => [],
     ];
