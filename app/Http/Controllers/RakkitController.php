@@ -22,16 +22,20 @@ class RakkitController extends Controller {
   static function deleteFile($page) {
     Storage::delete(self::getPagePath($page));
   }
-  static function getNewElement($newElement) {
+  static function getNewElement($newElement, $generateName = false) {
     $id = uniqid();
-    unset($newElement['name']);
+    $pureElement = [
+      'name' => $generateName ? 'Node - '.$id : $newElement['name'],
+      'fields' => $newElement['fields'],
+      'parent' => $newElement['parent']
+    ];
     $defaultElement = [
       'id' => $id,
-      'name' => 'Node - '.$id,
+      'name' => 'Unamed node',
       'parent' => NULL,
       'fields' => [],
     ];
-    return array_merge($defaultElement, $newElement);
+    return array_merge($defaultElement, $pureElement);
   }
   static function getPagePath($page) {
     return $page.self::EXT;
@@ -48,22 +52,28 @@ class RakkitController extends Controller {
   static public function getVariationsList() {
     return self::getFileContent('.variations');
   }
-  static function getElementIndex($id, $content) {
-    $element = \__::where($content, ['id' => $id]);
+  static function getElementIndex($query, $content, $field = 'id') {
+    $element = \__::where($content, [$field => $query]);
     return !empty($element) ? array_search($element[0], $content, true) : null;
   }
   static function getParentIndex($child, $content) {
-    if ($child['parent']) {
+    if (isset($child['parent'])) {
       return self::getElementIndex($child['parent'], $content);
     }
     return null;
+  }
+  static function elementExists($index, $name, $content) {
+    $elementSameNameIndex = self::getElementIndex($name, $content, 'name');
+    return !is_null($elementSameNameIndex) && $index !== $elementSameNameIndex;
   }
   // Reduce the element to use it as simple as possible
   static function filter ($obj, $variation) {
     $filteredObj = [];
     $filteredObj['_id'] = $obj['id'];
     $filteredObj['_parent'] = $obj['parent'];
-    $filteredObj['_name'] = $obj['name'];
+    if (isset($obj['name'])) {
+      $filteredObj['_name'] = $obj['name'];
+    }
     foreach($obj['fields'] as $f) {
       $filteredObj['$'.$f['name']] = isset($f['variations'][$variation]) ? $f['variations'][$variation] : NULL;
     }
@@ -78,6 +88,7 @@ class RakkitController extends Controller {
       $original = $s;
       $s = $pure ? $s : self::filter($s, $variation);
       if (is_null($original['parent'])) {
+        // The fist element name is the page name
         $s[($pure ? '' : '_').'name'] = $page;
         $nested = &$s;
       } else {
@@ -131,21 +142,29 @@ class RakkitController extends Controller {
   public function create(Request $request) {
     $page = $request->input('page');
     if (!empty($page)) {
-      $newElement = self::getNewElement($request->input('new'));
+      $newElement = self::getNewElement($request->input('new'), true);
       if (!self::exists($page)) {
+        unset($newElement['name']);
+        $newElement['parent'] = NULL;
         self::updateFile($page, [$newElement]);
         return $newElement;
       } else {
         if (!empty($newElement)) {
           $content = self::getFileContent($page);
-          array_push($content, $newElement);
-          self::updateFile($page, $content);
-          return $newElement;
+          if (!is_null(self::getParentIndex($newElement, $content))) {
+            if (!self::elementExists($newElement, $content)) {
+              array_push($content, $newElement);
+              self::updateFile($page, $content);
+              return $newElement;
+            }
+            return response('An element with this name already exists', 403);
+          }
+          return response('No parent found', 403);
         }
-        return response('Cannot insert empty content', 401);
+        return response('Cannot insert empty content', 403);
       }
     }
-    return response('You must specify a page name', 401);
+    return response('You must specify a page name', 403);
   }
   public function update(Request $request, $page, $id) {
     $newElement = $request->input();
@@ -154,9 +173,12 @@ class RakkitController extends Controller {
         $content = self::getFileContent($page);
         $index = self::getElementIndex($id, $content);
         if (isset($content[$index])) {
-          $content[$index] = array_merge($content[$index], $newElement);
-          self::updateFile($page, $content);
-          return 'Saved';
+          if (!self::elementExists($index, $newElement['name'], $content)) {
+            $content[$index] = array_merge($content[$index], $newElement);
+            self::updateFile($page, $content);
+            return 'Saved';
+          }
+          return response('An element with this name already exists', 403);
         }
         return response('Element not found', 404);
       }
