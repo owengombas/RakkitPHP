@@ -6,12 +6,13 @@ $router->get('/', function () use ($router) {
 
 // Rakkit Controller
 $router->group(['prefix' => 'rakkit'], function () use ($router) {
-  $router->post('/', 'RakkitController@create');
-  $router->delete('/{page}', 'RakkitController@deletePage');
-  $router->delete('/{page}/{id}', 'RakkitController@deleteElement');
-  $router->put('/{page}/{id}', 'RakkitController@update');
-  $router->get('/', 'RakkitController@getPages');
-  $router->get('/variations', 'RakkitController@getVariations');
-  $router->get('/pure/{page}', 'RakkitController@getPure');
-  $router->get('/{page}/{variation}', 'RakkitController@get');
+  $router->post('/', 'ElementController@create');
+  $router->delete('/{page}', 'PageController@delete');
+  $router->delete('/{page}/{id}', 'ElementController@delete');
+  $router->put('/{page}/{id}', 'ElementController@update');
+  $router->get('/', 'PageController@getAll');
+  $router->get('/variations', 'ElementController@getVariations');
+  $router->get('/pure/{page}', 'ElementController@getPure');
+  $router->get('/{page}/{variation}', 'ElementController@get');
+  $router->get('/test', 'Controller@test');
 });
