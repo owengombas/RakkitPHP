@@ -14,7 +14,7 @@ class Page {
 
   function __construct ($file, $memory = false, $autoCreate = false) {
     $this->path = self::getPath($file);
-    $this->exists = self::filExists($this->path);
+    $this->exists = self::fileExists($this->path);
     if (!$this->exists && $autoCreate) {
       $this->write();
       $this->createdByConstructor = true;
@@ -56,10 +56,16 @@ class Page {
   }
   public function find($query, $many = false) {
     $elements = \__::where($this->content, $query);
-    return !empty($elements) ? ($many ? $elements : $elements[0]) : NULL;
+    return !empty($elements) ? ($many ? $elements : ['element' => $elements[0], 'index' => array_search($elements[0], $this->content, true)]) : NULL;
+  }
+  public function findById($id) {
+    return $this->find(['id' => $id]);
+  }
+  public function findByName($name) {
+    return $this->find(['name' => $name], true);
   }
   public function exists ($id) {
-    return !is_null($this->find($query, ['id' => $id]));
+    return !is_null($this->findById($id));
   }
 
   public static function listFiles () {

@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Storage;
 use App\Objects\Page;
+use App\Objects\Element;
 
 ini_set('xdebug.var_display_max_depth', 100);
 ini_set('xdebug.var_display_max_children', 256);
@@ -141,53 +142,10 @@ class ElementController extends Controller {
   }
   // FILE
   public function update(Request $request, $page, $id) {
-    $newElement = $request->input();
-    $page = new Page($page, true);
-    if ($page->exists) {
-      if (!empty($newElement)) {
-        $index = self::getElementIndex($id, $page->content);
-        var_dump($index);
-        if (isset($page->content[$index])) {
-          if (!self::elementWithNameExists($newElement, $page->content, $index)) {
-            $page->content[$index] = array_merge($page->content[$index], $newElement);
-            $page->writeChanges();
-            return 'Saved';
-          }
-          return response('An element with this name already exists', 403);
-        }
-        return response('Element not found', 404);
-      }
-      return response('You must all informations (new element)', 401);
-    }
-    return response('Page not found', 404);
+    $page = Element::byId($page, $id)->update($request->input());
   }
   // FILE
   public function delete($page, $id) {
-    $page = new Page($page, true);
-    if ($page->exists) {
-      $rootDeleteElementIndex = self::getElementIndex($id, $page->content);
-      if (!is_null($rootDeleteElementIndex)) {
-        if (!self::isMainElement($rootDeleteElementIndex, $page->content)) {
-          function recurseDelete(&$content, $rootDeleteElementIndex) {
-            // Unset childs
-            foreach($content as $key => $value) {
-              if ($value['parent'] === $content[$rootDeleteElementIndex]['id']) {
-                recurseDelete($content, $key);
-                unset($content[$key], $key);
-              }
-            }
-            // Unset parent
-            unset($content[$rootDeleteElementIndex]);
-          }
-          recurseDelete($page->content, $rootDeleteElementIndex);
-          $page->writeChanges();
-        } else {
-          $page->delete();
-        }
-        return 'Deleted';
-      }
-      return response("Element not found", 403);
-    }
-    return response("Page doesn't exists", 403);
+    Element::byId($page, $id)->delete();
   }
 }
