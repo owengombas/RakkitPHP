@@ -11,8 +11,8 @@ $router->group(['prefix' => 'rakkit'], function () use ($router) {
   $router->delete('/{page}/{id}', 'ElementController@delete');
   $router->put('/{page}/{id}', 'ElementController@update');
   $router->get('/', 'PageController@getAll');
-  $router->get('/variations', 'ElementController@getVariations');
-  $router->get('/pure/{page}', 'ElementController@getPure');
-  $router->get('/{page}/{variation}', 'ElementController@get');
+  $router->get('/variations', 'PageController@getVariations');
+  $router->get('/pure/{page}', 'PageController@getPure');
+  $router->get('/{page}/{variation}', 'PageController@getClean');
   $router->get('/test', 'Controller@test');
 });

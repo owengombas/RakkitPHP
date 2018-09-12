@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use App\Objects\File;
+use App\Objects\Page;
+
+global $variations;
+$variations = new Page('.variations', true);
 
 class PageController extends Controller {
   public function delete($page) {
-    $page = new File($page);
+    $page = new Page($page);
     if ($page->exists) {
       $page->delete();
       return 'Deleted';
@@ -17,7 +20,7 @@ class PageController extends Controller {
 
   public function getAll() {
     try {
-      $filteredArr = array_filter(File::listFiles(), function($item) {
+      $filteredArr = array_filter(Page::listFiles(), function($item) {
         return $item[0] !== '.';
       });
       $filteredArr = array_map(function($item) {
@@ -27,5 +30,20 @@ class PageController extends Controller {
     } catch (\Exception $e) {
       return response($e->getMessage(), 500);
     }
+  }
+
+  public function getPure($page) {
+    $page = new Page($page, true);
+    return $page->getPure();
+  }
+
+  public function getClean($page, $variation) {
+    $page = new Page($page, true);
+    return $page->getClean($variation);
+  }
+
+  public function getVariations() {
+    global $variations;
+    return $variations->content;
   }
 }

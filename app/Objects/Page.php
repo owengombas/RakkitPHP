@@ -2,17 +2,20 @@
 
 namespace App\Objects;
 use Storage;
+use App\Objects\Element;
 
 global $EXT;
 $EXT = '.json';
 
 class Page {
   public $path;
+  public $name;
   public $exists = false;
   public $createdByConstructor = false;
   public $content = NULL;
 
   function __construct ($file, $memory = false, $autoCreate = false) {
+    $this->name = $file;
     $this->path = self::getPath($file);
     $this->exists = self::fileExists($this->path);
     if (!$this->exists && $autoCreate) {
@@ -43,8 +46,7 @@ class Page {
     return isset($this->content) ? $this->content : json_decode(Storage::get($this->path), true);
   }
   public function write ($content = '') {
-    $content = json_encode($content);
-    Storage::put($this->path, $content);
+    Storage::put($this->path, json_encode($content));
     $this->content = $content;
     $this->exists = true;
   }
@@ -66,6 +68,59 @@ class Page {
   }
   public function exists ($id) {
     return !is_null($this->findById($id));
+  }
+  public function getClean($variation) {
+    return $this->populate(false, $variation);
+  }
+  public function getPure() {
+    return $this->populate(true);
+  }
+
+  // Make relations (parent, children)
+  private function populate($pure = false, $variation = null) {
+    $source = $this->getContent();
+    $content = $source;
+    $nested = [];
+    foreach ($source as &$element) {
+      $original = $element;
+      $element = Element::new($element, $this);
+      $element = $pure ? $element->format() : $element->clean($variation);
+      // var_dump($element);
+      if (is_null($original['parent'])) {
+        // The fist element name is the page name
+        $element[($pure ? '' : '_').'name'] = $this->name;
+        $nested = &$element;
+      } else {
+        $parent = Element::new($original, $this)->getParent();
+        if (!is_null($parent)) {
+          $parent = Element::byId($this, $parent['element']['id']);
+          // Children property if pure mode
+          if ($pure || (isset($parent->childType) && $parent->childType === 'list')) {
+            if (!isset($source[$parent->index]['items'])) {
+              $source[$parent->index]['items'] = [];
+            }
+            $source[$parent->index]['items'][] = &$element;
+          } else {
+            $source[$parent->index][$original['name']] = &$element;
+          }
+        }
+      }
+    }
+    return $nested;
+  }
+
+  // Reduce the element to use it as simple as possible
+  private function filter ($obj, $variation) {
+    $filteredObj = [];
+    $filteredObj['_id'] = $obj['id'];
+    $filteredObj['_parent'] = $obj['parent'];
+    if (isset($obj['name'])) {
+      $filteredObj['_name'] = $obj['name'];
+    }
+    foreach($obj['fields'] as $f) {
+      $filteredObj['$'.$f['name']] = isset($f['variations'][$variation]) ? $f['variations'][$variation] : NULL;
+    }
+    return $filteredObj;
   }
 
   public static function listFiles () {
