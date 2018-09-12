@@ -126,13 +126,20 @@ class Element {
         $newElement = Element::new($newElement);
         if ($this->notExistsWithName($newElement->name)) {
           $newElement->id = $this->id;
-          $this->setElement(
-            array_merge(
-              $this->format(),
-              $newElement->format($this->isMain)
-            ), false
-          );
-          return 'Saved';
+          if (is_null($newElement->parent) === is_null($this->parent)) {
+            $this->setElement(
+              array_merge(
+                $this->format(),
+                $newElement->format($this->isMain)
+              ), false
+            );
+            if ($this->isMain && $newElement->name !== $this->name) {
+              $this->page->rename($newElement->name);
+            }
+            return 'Saved';
+          } else {
+            return response('Cannot move the main Element', 403);
+          }
         }
         return response('An element with this name already exists', 403);
       }
@@ -185,7 +192,6 @@ class Element {
     $res = $this->page->find(['name' => $name, 'parent' => $this->parent]);
     return is_null($res) || $this->index === $res['index'];
   }
-
 
   private function setElement($value, $refresh = true, $save = true) {
     if ($refresh) {

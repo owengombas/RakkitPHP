@@ -9,15 +9,6 @@ global $variations;
 $variations = new Page('.variations', true);
 
 class PageController extends Controller {
-  public function delete($page) {
-    $page = new Page($page);
-    if ($page->exists) {
-      $page->delete();
-      return 'Deleted';
-    }
-    return response("Page doesn't exists", 401);
-  }
-
   public function getAll() {
     try {
       $filteredArr = array_filter(Page::listFiles(), function($item) {

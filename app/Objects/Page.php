@@ -75,6 +75,9 @@ class Page {
   public function getPure() {
     return $this->populate(true);
   }
+  public function rename($name) {
+    Storage::move($this->path, self::getPath($name));
+  }
 
   // Make relations (parent, children)
   private function populate($pure = false, $variation = null) {
