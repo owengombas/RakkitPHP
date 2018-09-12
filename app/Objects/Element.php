@@ -10,9 +10,9 @@ class Element {
   public $name; // ?
   public $parent;
   public $fields;
-  public $childType;
   public $isMain;
   public $index;
+  public $childType;
 
   private function __construct ($page, $element) {
     $this->init($page, $element);
@@ -26,15 +26,15 @@ class Element {
       if (!empty($page)) {
         $this->page = gettype($page) === 'object' ? $page : new Page($page);
       }
-      $this->isMain = is_null($element['parent']);
+
       $this->id = isset($element['id']) ? $element['id'] : uniqid();
-      $this->fields = $element['fields'];
-      $this->parent = $element['parent'];
+      $this->parent = isset($element['parent']) ? $element['parent'] : null;
+      $this->fields = isset($element['fields']) ? $element['fields'] : [];
+      $this->name = isset($element['name']) ? $element['name'] : 'Node_'.$this->id;
+      $this->isMain = is_null($this->parent);
+
       if (isset($element['childType'])) {
         $this->childType = $element['childType'];
-      }
-      if (isset($element['name'])) {
-        $this->name = $element['name'];
       }
     } else {
       throw new \Exception('Cannot init a NULL Element');
@@ -50,8 +50,11 @@ class Element {
     unset($toWrite['page']);
     unset($toWrite['index']);
     if ($main) {
+      unset($toWrite['parent']);
       unset($toWrite['name']);
-      $toWrite['parent'] = NULL;
+    }
+    if (is_null($toWrite['childType'])) {
+      unset($toWrite['childType']);
     }
     // If the page doesn't exists create an array with the element (Main Element)
     return $toWrite;

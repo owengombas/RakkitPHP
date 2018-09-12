@@ -84,17 +84,15 @@ class Page {
     $source = $this->getContent();
     $content = $source;
     $nested = [];
-    foreach ($source as &$element) {
-      $original = $element;
-      $element = Element::new($element, $this);
-      $element = $pure ? $element->format() : $element->clean($variation);
-      // var_dump($element);
-      if (is_null($original['parent'])) {
+    foreach ($source as &$original) {
+      $element = Element::new($original, $this);
+      $original = $pure ? $element->format() : $element->clean($variation);
+      if ($element->isMain) {
         // The fist element name is the page name
-        $element[($pure ? '' : '_').'name'] = $this->name;
-        $nested = &$element;
+        $original[($pure ? '' : '_').'name'] = $this->name;
+        $nested = &$original;
       } else {
-        $parent = Element::new($original, $this)->getParent();
+        $parent = $element->getParent();
         if (!is_null($parent)) {
           $parent = Element::byId($this, $parent['element']['id']);
           // Children property if pure mode
@@ -102,9 +100,9 @@ class Page {
             if (!isset($source[$parent->index]['items'])) {
               $source[$parent->index]['items'] = [];
             }
-            $source[$parent->index]['items'][] = &$element;
+            $source[$parent->index]['items'][] = &$original;
           } else {
-            $source[$parent->index][$original['name']] = &$element;
+            $source[$parent->index][$element->name] = &$original;
           }
         }
       }
