@@ -2,6 +2,7 @@
 
 namespace App\Objects;
 use App\Objects\Page;
+use App\Objects\Field;
 use App\Objects\Element;
 
 class Element {
@@ -29,7 +30,9 @@ class Element {
 
       $this->id = isset($element['id']) ? $element['id'] : uniqid();
       $this->parent = isset($element['parent']) ? $element['parent'] : null;
-      $this->fields = isset($element['fields']) ? $element['fields'] : [];
+      $this->fields = array_map(function($field) {
+        return new Field($field);
+      }, isset($element['fields']) ? $element['fields'] : []);
       $this->name = isset($element['name']) ? $element['name'] : 'Node_'.$this->id;
       $this->isMain = is_null($this->parent);
 
@@ -55,6 +58,9 @@ class Element {
     }
     if (is_null($toWrite['childType'])) {
       unset($toWrite['childType']);
+    }
+    foreach ($toWrite['fields'] as &$field) {
+      $field = (array)$field;
     }
     // If the page doesn't exists create an array with the element (Main Element)
     return $toWrite;
@@ -130,16 +136,21 @@ class Element {
         if ($this->notExistsWithName($newElement->name)) {
           $newElement->id = $this->id;
           if (is_null($newElement->parent) === is_null($this->parent)) {
-            $this->setElement(
-              array_merge(
-                $this->format(),
-                $newElement->format($this->isMain)
-              ), false
-            );
-            if ($this->isMain && $newElement->name !== $this->name) {
-              $this->page->rename($newElement->name);
+            $duplicatedFields = $newElement->duplicatedFields();
+            if (count($duplicatedFields) <= 0) {
+              $this->setElement(
+                array_merge(
+                  $this->format(),
+                  $newElement->format($this->isMain)
+                ), false
+              );
+              if ($this->isMain && $newElement->name !== $this->name) {
+                $this->page->rename($newElement->name);
+              }
+              return 'Saved';
+            } else {
+              return response('Fields '.implode(',', $duplicatedFields).' are duplicated', 403);
             }
-            return 'Saved';
           } else {
             return response('Cannot move the main Element', 403);
           }
@@ -177,6 +188,19 @@ class Element {
     } else {
       throw new \Exception ('Element does not exists');
     }
+  }
+
+  public function duplicatedFields() {
+    $duplicated = [];
+    foreach ($this->fields as $field) {
+      $duplicates = \__::filter($this->fields, function ($fieldF) use ($field) {
+        return $fieldF->name === $field->name;
+      });
+      if (count($duplicates) > 1 && !in_array($field->name, $duplicated)) {
+        array_push($duplicated, $field->name);
+      }
+    }
+    return $duplicated;
   }
 
   public function parentExists() {
