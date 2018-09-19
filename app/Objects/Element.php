@@ -133,6 +133,7 @@ class Element {
     if ($this->page->exists) {
       if (!empty($newElement)) {
         $newElement = Element::new($newElement);
+        $this->parent = $newElement->parent;
         if ($this->notExistsWithName($newElement->name)) {
           $newElement->id = $this->id;
           if (is_null($newElement->parent) === is_null($this->parent)) {
