@@ -14,6 +14,8 @@ class Element {
   public $isMain;
   public $index;
   public $childType;
+  public $items;
+  public $order;
 
   private function __construct ($page, $element) {
     $this->init($page, $element);
@@ -26,6 +28,9 @@ class Element {
       $element = $element['element'];
       if (!empty($page)) {
         $this->page = gettype($page) === 'object' ? $page : new Page($page);
+      }
+      if (isset($element['items'])) {
+        $this->items = $element['items'];
       }
 
       $this->id = isset($element['id']) ? $element['id'] : uniqid();
@@ -59,6 +64,9 @@ class Element {
     if (is_null($toWrite['childType'])) {
       unset($toWrite['childType']);
     }
+    if (!isset($this->items)) {
+      unset($toWrite['items']);
+    }
     foreach ($toWrite['fields'] as &$field) {
       $field = (array)$field;
     }
@@ -74,7 +82,7 @@ class Element {
       $filteredObj['_name'] = $this->name;
     }
     foreach($this->fields as $f) {
-      $filteredObj['$'.$f['name']] = isset($f['variations'][$variation]) ? $f['variations'][$variation] : NULL;
+      $filteredObj['$'.$f->name] = isset($f->variations[$variation]) ? $f->variations[$variation] : NULL;
     }
     return $filteredObj;
   }

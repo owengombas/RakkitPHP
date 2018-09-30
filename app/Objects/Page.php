@@ -93,7 +93,7 @@ class Page {
         $nested = &$original;
       } else {
         $parent = $element->getParent();
-        if (!is_null($parent)) {
+        if (isset($parent)) {
           $parent = Element::byId($this, $parent['element']['id']);
           // Children property if pure mode
           if ($pure || (isset($parent->childType) && $parent->childType === 'list')) {
@@ -101,6 +101,7 @@ class Page {
               $source[$parent->index]['items'] = [];
             }
             $source[$parent->index]['items'][] = &$original;
+            // Sort Here for editing usage
           } else {
             $source[$parent->index][$element->name] = &$original;
           }
